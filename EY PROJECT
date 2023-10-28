@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "EY Project RDS Template"
+
+Parameters:
+  ApplicationName:
+    Description: "App name"
+    Type: String
+    Default: "ey"
+
+  Environment:
+    Description: "Application environment"
+    Type: String
+    Default: "dev"
+    AllowedValues: ["dev", "test", "stage", "prod"]
+
+  Contact:
+    Description: "Contact email of the team"
+    Type: String
+
+  DBName:
+    Default: mydb
+    Description: My database
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+
+  DBInstanceClass:
+    Default: db.t2.micro
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+
+  DBAllocatedStorage:
+    Default: '20'
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+    ConstraintDescription: must be between 20 and 65536 GiB.
+
+  DBUsername:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+
+  DBPassword:
+    NoEcho: 'true'
+    Description: Password MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+
+
+Resources:
+  RDSDB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: !Join ["-", [!Ref ApplicationName, !Ref Environment, "rds"]]
+      DBName: !Ref DBName
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      Engine: MySQL
+      EngineVersion: "8.0.34"
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !ImportValue "${ApplicationName}-${Environment}-DBSecurityGroupID"
+      DBSubnetGroupName: !Ref DBSubnetGroup
+
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Private subnet group to launch RDS"
+      SubnetIds:
+        - Fn::ImportValue: !Sub "${ApplicationName}-${Environment}-PrivateSubnet1ID"
+        - Fn::ImportValue: !Sub "${ApplicationName}-${Environment}-PrivateSubnet2ID"
